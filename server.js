@@ -1,14 +1,34 @@
-require('dotenv').config(); // ✅ Must be FIRST
+/*
+server.js - Main Server File 
+*/
+
+require('dotenv').config();
 
 const express = require('express');
-const multer = require('multer');
+const cors = require('cors');
 const cloudinary = require('cloudinary').v2;
-const { MongoClient } = require('mongodb');
-const path = require('path');
 
+const routes = require('./routes');
+const db = require('./database');
+
+/*
+ INITIALIZE EXPRESS APP
+*/
 const app = express();
+
+/*
+MIDDLEWARE
+*/
 app.use(express.json());
-app.use(express.static('templates'));
+app.use(cors({
+  origin: 'http://localhost:5000',
+  credentials: true
+}));
+app.use(express.static('public'));
+
+/*
+CLOUDINARY CONFIGURATION
+*/
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -16,64 +36,70 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-const MONGO_URI = process.env.MONGO_URI;
-let products_collection;
+console.log('✅ Cloudinary configured');
 
-MongoClient.connect(MONGO_URI).then(client => {
-  const db = client.db('shivashakti_db');
-  products_collection = db.collection('products');
-  console.log('✅ Connected to MongoDB');
+/*
+DATABASE CONNECTION
+*/
+
+const initializeDatabase = async () => {
+  try {
+    const mongoURI = process.env.MONGO_URI;
+    if (!mongoURI) {
+      throw new Error('MONGO_URI not set in .env');
+    }
+    await db.connectDB(mongoURI);
+  } catch (error) {
+    console.error('❌ Failed to connect to database:', error.message);
+    process.exit(1);
+  }
+};
+
+// ROUTES SETUP
+app.use('/', routes);
+
+// ERROR HANDLING MIDDLEWARE
+
+app.use((err, req, res, next) => {
+  console.error('[ERROR]', err.message);
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal server error'
+  });
 });
 
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
+/*
+ 404 HANDLER
+*/
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
 
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'templates', 'shakti.html')));
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'templates', 'admin.html')));
-
-app.post('/api/upload', upload.single('image'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No image part' });
-  const { name, price, category } = req.body;
+/*
+START SERVER
+*/
+const PORT = process.env.PORT || 5000;
+const startServer = async () => {
   try {
-    const result = await new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_stream((error, result) => {
-        if (error) reject(error);
-        else resolve(result);
-      }).end(req.file.buffer);
+    // Connect to database first
+    await initializeDatabase();
+
+    // Start listening
+    app.listen(PORT, () => {
+      console.log('\n=============================================');
+      console.log('  🚀 Shivashakti Server Running');
+      console.log(`  📍 http://localhost:${PORT}`);
+      console.log(`  🔐 Admin: http://localhost:${PORT}/admin`);
+      console.log('=============================================\n');
     });
-    const product_data = { name, price, image_url: result.secure_url, category };
-    const inserted = await products_collection.insertOne(product_data);
-    product_data._id = inserted.insertedId.toString();
-    res.status(201).json({ message: 'Product uploaded successfully!', product: product_data });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
 
-app.get('/api/products', async (req, res) => {
-  const { category } = req.query;
-  try {
-    // ✅ Case-insensitive search — fixes mismatch between "pure-pattu" and "Pure Pattu"
-    const query = category ? { category: { $regex: new RegExp(`^${category.trim()}$`, 'i') } } : {};
-    const docs = await products_collection.find(query).toArray();
-    console.log(`Filter: "${category}" → ${docs.length} results`);
-    docs.forEach(d => d._id = d._id.toString());
-    res.json(docs);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error.message);
+    process.exit(1);
   }
-});
+};
 
-app.delete('/api/delete', async (req, res) => {
-  const { name } = req.body;
-  try {
-    const result = await products_collection.deleteOne({ name });
-    if (result.deletedCount) return res.json({ message: 'Deleted' });
-    res.status(404).json({ error: 'Not found' });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
+// Start the server
+startServer();
 
-// ✅ Only ONE app.listen at the bottom
-app.listen(process.env.PORT || 5000, () => console.log('🚀 Server running at http://localhost:5000'));
+// EXPORTS (for testing)
+module.exports = app;

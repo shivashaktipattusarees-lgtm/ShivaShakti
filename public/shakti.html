@@ -380,166 +380,176 @@
         if (pageId === 'collections') loadProducts(); // load all on visit
     }
 
-    // ✅ FILTER BY CATEGORY — scroll + fetch filtered products
- function filterByCategory(category) {
-    const categoryLabel = categoryNames[category] || category;
+    // ✅ FILTER BY CATEGORY — Updated to use http://localhost:5000
+    function filterByCategory(category) {
+        const categoryLabel = categoryNames[category] || category;
 
-    document.getElementById('products-strip').scrollIntoView({ behavior: 'smooth' });
-    document.getElementById('products-section-label').textContent = 'Filtered Results';
-    document.getElementById('products-section-title').textContent = categoryLabel;
-    document.getElementById('filter-bar').style.display = 'flex';
-    document.getElementById('filter-name').textContent = categoryLabel;
+        document.getElementById('products-strip').scrollIntoView({ behavior: 'smooth' });
+        document.getElementById('products-section-label').textContent = 'Filtered Results';
+        document.getElementById('products-section-title').textContent = categoryLabel;
+        document.getElementById('filter-bar').style.display = 'flex';
+        document.getElementById('filter-name').textContent = categoryLabel;
 
-    const grid = document.getElementById('products-grid');
-    grid.innerHTML = '<div style="text-align:center;padding:40px;color:#8b6040;width:100%">⏳ Loading products...</div>';
+        const grid = document.getElementById('products-grid');
+        grid.innerHTML = '<div style="text-align:center;padding:40px;color:#8b6040;width:100%">⏳ Loading products...</div>';
 
-    // ✅ Use categoryLabel (name) instead of raw category key
-    fetch(`/api/products?category=${encodeURIComponent(category)}`)
-        .then(res => res.json())
-        .then(products => renderProducts(products))
-        .catch(err => {
-            grid.innerHTML = '<div style="text-align:center;padding:40px;color:red;">❌ Failed to load. Make sure Flask server is running.</div>';
-            console.error(err);
-        });
-}
+        // ✅ Use http://localhost:5000 (Node.js server)
+        fetch(`http://localhost:5000/api/products?category=${encodeURIComponent(category)}`)
+            .then(res => res.json())
+            .then(products => renderProducts(products))
+            .catch(err => {
+                grid.innerHTML = '<div style="text-align:center;padding:40px;color:red;">❌ Failed to load. Make sure Node.js server is running at http://localhost:5000</div>';
+                console.error(err);
+            });
+    }
 
     // ✅ RENDER PRODUCTS
     function renderProducts(products) {
-    const grid = document.getElementById('products-grid');
-    if (products.length === 0) {
-        grid.innerHTML = '<div style="text-align:center;padding:40px;color:#8b6040;width:100%">No products found in this category.</div>';
-        return;
-    }
-    grid.innerHTML = products.map(product => `
-        <div class="product-card">
-            <img src="${product.image_url}" alt="${product.name}"
-                 onerror="this.src='https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=500&q=80'">
-            <div class="product-info">
-                <h3>${product.name}</h3>
-                <p class="product-price">₹ ${Number(product.price).toLocaleString('en-IN')}</p>
-                <button class="add-to-cart-btn" onclick='addToCart(${JSON.stringify({name: product.name, price: product.price, image_url: product.image_url})})'>
-                    🛒 Add to Cart
-                </button>
-            </div>
-        </div>
-    `).join('');
-}
-
-  let cart = [];
-
-function addToCart(product) {
-    const existing = cart.find(i => i.name === product.name);
-    if (existing) {
-        existing.qty += 1;
-    } else {
-        cart.push({ ...product, qty: 1 });
-    }
-    updateCartBadge();
-    showCartToast(product.name);
-}
-
-function updateCartBadge() {
-    const total = cart.reduce((sum, i) => sum + i.qty, 0);
-    document.getElementById('cart-badge').textContent = total;
-    document.getElementById('cart-badge').style.display = total > 0 ? 'inline-block' : 'none';
-}
-
-function showCartToast(name) {
-    const toast = document.getElementById('cart-toast');
-    toast.textContent = `✅ "${name}" added to cart!`;
-    toast.style.display = 'block';
-    setTimeout(() => toast.style.display = 'none', 2000);
-}
-
-function openCart() {
-    const drawer = document.getElementById('cart-drawer');
-    const itemsEl = document.getElementById('cart-items');
-    const totalEl = document.getElementById('cart-total');
-
-    if (cart.length === 0) {
-        itemsEl.innerHTML = '<p style="text-align:center;color:#8b6040;padding:20px">Your cart is empty 🛒</p>';
-        totalEl.textContent = '';
-    } else {
-        itemsEl.innerHTML = cart.map((item, i) => `
-            <div class="cart-item">
-                <img src="${item.image_url}" onerror="this.src='https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=300&q=80'">
-                <div class="cart-item-info">
-                    <strong>${item.name}</strong>
-                    <span>₹ ${Number(item.price).toLocaleString('en-IN')} × ${item.qty}</span>
-                </div>
-                <div class="cart-item-controls">
-                    <button onclick="changeQty(${i}, -1)">−</button>
-                    <span>${item.qty}</span>
-                    <button onclick="changeQty(${i}, 1)">+</button>
-                    <button onclick="removeFromCart(${i})" style="color:red;margin-left:8px">🗑</button>
+        const grid = document.getElementById('products-grid');
+        if (products.length === 0) {
+            grid.innerHTML = '<div style="text-align:center;padding:40px;color:#8b6040;width:100%">No products found in this category.</div>';
+            return;
+        }
+        grid.innerHTML = products.map(product => `
+            <div class="product-card">
+                <img src="${product.image_url}" alt="${product.name}"
+                     onerror="this.src='https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=500&q=80'">
+                <div class="product-info">
+                    <h3>${product.name}</h3>
+                    <p class="product-price">₹ ${Number(product.price).toLocaleString('en-IN')}</p>
+                    <button class="add-to-cart-btn" onclick='addToCart(${JSON.stringify({name: product.name, price: product.price, image_url: product.image_url})})'>
+                        🛒 Add to Cart
+                    </button>
                 </div>
             </div>
         `).join('');
-        const total = cart.reduce((sum, i) => sum + (Number(i.price) * i.qty), 0);
-        totalEl.innerHTML = `<strong>Total: ₹ ${total.toLocaleString('en-IN')}</strong>`;
     }
-    drawer.style.display = 'flex';
-}
 
-function closeCart() {
-    document.getElementById('cart-drawer').style.display = 'none';
-}
+    let cart = [];
 
-function changeQty(index, delta) {
-    cart[index].qty += delta;
-    if (cart[index].qty <= 0) cart.splice(index, 1);
-    updateCartBadge();
-    openCart(); // re-render
-}
+    function addToCart(product) {
+        const existing = cart.find(i => i.name === product.name);
+        if (existing) {
+            existing.qty += 1;
+        } else {
+            cart.push({ ...product, qty: 1 });
+        }
+        updateCartBadge();
+        showCartToast(product.name);
+    }
 
-function removeFromCart(index) {
-    cart.splice(index, 1);
-    updateCartBadge();
-    openCart();
-}
+    function updateCartBadge() {
+        const total = cart.reduce((sum, i) => sum + i.qty, 0);
+        document.getElementById('cart-badge').textContent = total;
+        document.getElementById('cart-badge').style.display = total > 0 ? 'inline-block' : 'none';
+    }
 
-function proceedToPayment() {
-    const total = cart.reduce((sum, i) => sum + (Number(i.price) * i.qty), 0);
-    const totalPaise = total * 100; // Razorpay uses paise
+    function showCartToast(name) {
+        const toast = document.getElementById('cart-toast');
+        toast.textContent = `✅ "${name}" added to cart!`;
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 2000);
+    }
 
-    // ✅ When you have Razorpay keys, replace YOUR_KEY_ID below
-    var options = {
-        key: "YOUR_KEY_ID", // 🔑 Replace with your Razorpay key
-        amount: totalPaise,
-        currency: "INR",
-        name: "Your Saree Store",
-        description: "Saree Purchase",
-        handler: function (response) {
-            alert("✅ Payment successful! ID: " + response.razorpay_payment_id);
-            cart = [];
-            updateCartBadge();
-            closeCart();
-        },
-        prefill: { name: "", email: "", contact: "" },
-        theme: { color: "#8b2020" }
-    };
-    var rzp = new Razorpay(options);
-    rzp.open();
-}  // ✅ LOAD ALL PRODUCTS
+    function openCart() {
+        const drawer = document.getElementById('cart-drawer');
+        const itemsEl = document.getElementById('cart-items');
+        const totalEl = document.getElementById('cart-total');
+
+        if (cart.length === 0) {
+            itemsEl.innerHTML = '<p style="text-align:center;color:#8b6040;padding:20px">Your cart is empty 🛒</p>';
+            totalEl.textContent = '';
+        } else {
+            itemsEl.innerHTML = cart.map((item, i) => `
+                <div class="cart-item">
+                    <img src="${item.image_url}" onerror="this.src='https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=300&q=80'">
+                    <div class="cart-item-info">
+                        <strong>${item.name}</strong>
+                        <span>₹ ${Number(item.price).toLocaleString('en-IN')} × ${item.qty}</span>
+                    </div>
+                    <div class="cart-item-controls">
+                        <button onclick="changeQty(${i}, -1)">−</button>
+                        <span>${item.qty}</span>
+                        <button onclick="changeQty(${i}, 1)">+</button>
+                        <button onclick="removeFromCart(${i})" style="color:red;margin-left:8px">🗑</button>
+                    </div>
+                </div>
+            `).join('');
+            const total = cart.reduce((sum, i) => sum + (Number(i.price) * i.qty), 0);
+            totalEl.innerHTML = `<strong>Total: ₹ ${total.toLocaleString('en-IN')}</strong>`;
+        }
+        drawer.style.display = 'flex';
+    }
+
+    function closeCart() {
+        document.getElementById('cart-drawer').style.display = 'none';
+    }
+
+    function changeQty(index, delta) {
+        cart[index].qty += delta;
+        if (cart[index].qty <= 0) cart.splice(index, 1);
+        updateCartBadge();
+        openCart(); // re-render
+    }
+
+    function removeFromCart(index) {
+        cart.splice(index, 1);
+        updateCartBadge();
+        openCart();
+    }
+
+    function proceedToPayment() {
+        const total = cart.reduce((sum, i) => sum + (Number(i.price) * i.qty), 0);
+        const totalPaise = total * 100; // Razorpay uses paise
+
+        // ✅ When you have Razorpay keys, replace YOUR_KEY_ID below
+        var options = {
+            key: "YOUR_KEY_ID", // 🔑 Replace with your Razorpay key
+            amount: totalPaise,
+            currency: "INR",
+            name: "Your Saree Store",
+            description: "Saree Purchase",
+            handler: function (response) {
+                alert("✅ Payment successful! ID: " + response.razorpay_payment_id);
+                cart = [];
+                updateCartBadge();
+                closeCart();
+            },
+            prefill: { name: "", email: "", contact: "" },
+            theme: { color: "#8b2020" }
+        };
+        var rzp = new Razorpay(options);
+        rzp.open();
+    }
+
+    // ✅ LOAD ALL PRODUCTS — Updated to use http://localhost:5000
     async function loadProducts() {
         const grid = document.getElementById('products-grid');
         grid.innerHTML = '<div style="text-align:center;padding:40px;color:#8b6040;width:100%">⏳ Loading products...</div>';
         try {
-            const res = await fetch('/api/products');
+            const res = await fetch('http://localhost:5000/api/products');
             if (!res.ok) throw new Error(`Server error: ${res.status}`);
             const products = await res.json();
             renderProducts(products);
         } catch (err) {
             console.error('Failed to load products:', err);
             grid.innerHTML = `<div style="text-align:center;padding:40px;color:var(--crimson);width:100%">
-                ⚠️ Could not load products. Make sure your Flask server is running at port 5000.<br>
+                ⚠️ Could not load products. Make sure your Node.js server is running at http://localhost:5000.<br>
                 <small style="color:#8b6040;margin-top:8px;display:block">${err.message}</small>
             </div>`;
         }
     }
 
+    function clearFilter() {
+        document.getElementById('filter-bar').style.display = 'none';
+        document.getElementById('products-section-label').textContent = 'Featured Products';
+        document.getElementById('products-section-title').textContent = 'Latest Arrivals';
+        loadProducts();
+    }
+
     showPage('home');
 </script>
+
 <!-- Toast notification -->
 <div id="cart-toast" style="display:none;position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#2d6a4f;color:white;padding:12px 24px;border-radius:8px;z-index:9999;font-weight:600"></div>
 
