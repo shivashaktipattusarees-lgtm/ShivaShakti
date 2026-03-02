@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Shivashakti — Admin Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --crimson: #8b0000;
+            --crimson-deep: #5c0000;
+            --gold: #c9a84c;
+            --gold-light: #e2c06a;
+            --dark: #1a0a00;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Lato', sans-serif;
+            background: var(--dark);
+            min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            position: relative;
+            min-height: 100vh;
+            overflow-y: auto;
+        }
+        body::before {
+            content: ''; position: fixed; inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 20% 20%, rgba(139,0,0,0.25) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 80% at 80% 80%, rgba(201,168,76,0.1) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        body::after {
+            content: ''; position: fixed; inset: 0;
+            background-image: repeating-linear-gradient(45deg,transparent,transparent 40px,rgba(201,168,76,0.03) 40px,rgba(201,168,76,0.03) 41px);
+            pointer-events: none;
+        }
+
+        .screen { display: none; width: 100%; max-width: 460px; padding: 20px; position: relative; z-index: 10; }
+        .screen.active { display: block; animation: fadeUp 0.45s ease forwards; }
+        #screen-admin { max-width: 600px; }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);} }
+
+        .card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(201,168,76,0.2);
+            border-radius: 16px; padding: 48px 40px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 32px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(201,168,76,0.15);
+        }
+
+        .logo-area { text-align: center; margin-bottom: 32px; }
+        .ornament { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:18px; }
+        .ornament-line { height:1px; width:50px; background:linear-gradient(90deg,transparent,var(--gold)); }
+        .ornament-line.r { background:linear-gradient(90deg,var(--gold),transparent); }
+        .ornament-diamond { width:8px; height:8px; background:var(--gold); transform:rotate(45deg); }
+        .logo-area h1 { font-family:'Cinzel',serif; color:var(--gold-light); font-size:1.4rem; letter-spacing:3px; margin-bottom:4px; }
+        .logo-area p  { font-family:'Cormorant Garamond',serif; font-style:italic; color:rgba(245,233,200,0.45); font-size:0.9rem; letter-spacing:2px; }
+
+        .screen-label { font-family:'Cinzel',serif; color:rgba(245,233,200,0.85); font-size:0.68rem; letter-spacing:4px; text-transform:uppercase; text-align:center; margin-bottom:6px; }
+        .screen-sub   { font-family:'Cormorant Garamond',serif; color:rgba(245,233,200,0.35); font-size:0.9rem; text-align:center; margin-bottom:28px; letter-spacing:1px; }
+
+        .google-btn {
+            width: 100%;
+            display: flex; align-items: center; justify-content: center; gap: 14px;
+            background: white; color: #3c4043;
+            border: none; border-radius: 8px;
+            padding: 14px 24px;
+            font-family: 'Lato', sans-serif; font-size: 0.95rem; font-weight: 700;
+            letter-spacing: 0.3px; cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+        }
+        .google-btn:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(0,0,0,0.4); }
+        .google-btn:active { transform:translateY(0); }
+        .google-btn:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
+        .google-icon { width:22px; height:22px; flex-shrink:0; }
+
+        .security-note {
+            display:flex; align-items:center; justify-content:center;
+            gap:8px; margin-top:20px; color:rgba(245,233,200,0.28); font-size:0.73rem; letter-spacing:1px;
+        }
+        .security-note::before,.security-note::after{content:'';height:1px;width:28px;background:rgba(201,168,76,0.2);}
+
+        .alert { padding:12px 16px; border-radius:8px; font-size:0.84rem; margin-bottom:16px; display:none; text-align:center; line-height:1.5; }
+        .alert.show    { display:block; }
+        .alert.error   { background:rgba(192,57,43,0.14); border:1px solid rgba(192,57,43,0.3); color:#e07070; }
+        .alert.success { background:rgba(26,122,58,0.14); border:1px solid rgba(26,122,58,0.3); color:#6fcf97; }
+        .alert.info    { background:rgba(201,168,76,0.1);  border:1px solid rgba(201,168,76,0.25); color:var(--gold-light); }
+
+        .otp-user-info {
+            display:flex; align-items:center; gap:12px;
+            background:rgba(201,168,76,0.06); border:1px solid rgba(201,168,76,0.15);
+            border-radius:10px; padding:14px 18px; margin-bottom:22px;
+        }
+        .otp-avatar    { width:42px;height:42px;border-radius:50%;border:2px solid var(--gold);object-fit:cover; }
+        .otp-user-name { font-family:'Cinzel',serif;color:var(--gold-light);font-size:0.82rem;letter-spacing:1px; }
+        .otp-user-email{ color:rgba(245,233,200,0.4);font-size:0.75rem;margin-top:3px; }
+
+        .otp-sent-msg {
+            background:rgba(26,122,58,0.12);border:1px solid rgba(26,122,58,0.3);
+            border-radius:8px;padding:12px 16px;margin-bottom:20px;
+            color:#6fcf97;font-size:0.84rem;text-align:center;line-height:1.6;
+        }
+
+        .otp-boxes { display:flex; gap:10px; justify-content:center; margin-bottom:18px; }
+        .otp-box {
+            width:52px; height:60px;
+            background:rgba(255,255,255,0.05);
+            border:2px solid rgba(201,168,76,0.25); border-radius:10px;
+            text-align:center; font-family:'Cinzel',serif; font-size:1.5rem; font-weight:700;
+            color:var(--gold-light); outline:none;
+            transition:border-color 0.2s, background 0.2s;
+            caret-color:var(--gold);
+        }
+        .otp-box:focus  { border-color:var(--gold); background:rgba(201,168,76,0.08); }
+        .otp-box.filled { border-color:rgba(201,168,76,0.6); }
+
+        .otp-timer { text-align:center; font-size:0.8rem; color:rgba(245,233,200,0.35); margin-bottom:18px; letter-spacing:1px; }
+        .otp-timer span { color:var(--gold-light); font-weight:700; }
+        .otp-timer.expired { color:#e07070; }
+
+        .primary-btn {
+            width:100%; background:linear-gradient(135deg,var(--crimson),var(--crimson-deep));
+            color:var(--gold-light); border:none; border-radius:8px; padding:15px;
+            font-family:'Cinzel',serif; font-size:0.78rem; letter-spacing:3px;
+            text-transform:uppercase; cursor:pointer; transition:all 0.2s;
+            box-shadow:0 6px 24px rgba(139,0,0,0.35);
+        }
+        .primary-btn:hover:not(:disabled){ transform:translateY(-2px); box-shadow:0 10px 34px rgba(139,0,0,0.45); }
+        .primary-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+
+        .ghost-btn {
+            width:100%; background:transparent; border:1px solid rgba(201,168,76,0.22);
+            color:rgba(245,233,200,0.45); padding:11px; border-radius:8px;
+            font-family:'Cinzel',serif; font-size:0.7rem; letter-spacing:2px;
+            cursor:pointer; transition:all 0.2s; margin-top:10px;
+        }
+        .ghost-btn:hover:not(:disabled){ background:rgba(201,168,76,0.08); border-color:rgba(201,168,76,0.5); color:var(--gold-light); }
+        .ghost-btn:disabled { opacity:0.3; cursor:not-allowed; }
+
+        .blocked-icon  { font-size:3rem; text-align:center; margin-bottom:14px; }
+        .blocked-title { font-family:'Cinzel',serif; color:#e74c3c; font-size:1rem; letter-spacing:3px; text-align:center; margin-bottom:10px; }
+        .blocked-email { background:rgba(139,0,0,0.2); border:1px solid rgba(139,0,0,0.4); border-radius:8px; padding:12px 16px; margin:16px 0; text-align:center; font-family:'Cormorant Garamond',serif; color:var(--gold-light); font-size:1.05rem; word-break:break-all; }
+        .blocked-msg   { color:rgba(245,233,200,0.4); font-size:0.88rem; text-align:center; line-height:1.7; margin-bottom:18px; }
+
+        .admin-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; }
+        .admin-user   { display:flex; align-items:center; gap:12px; }
+        .admin-avatar { width:40px; height:40px; border-radius:50%; border:2px solid var(--gold); object-fit:cover; }
+        .admin-user-name  { font-family:'Cinzel',serif; color:var(--gold-light); font-size:0.78rem; letter-spacing:1px; }
+        .admin-user-email { color:rgba(245,233,200,0.4); font-size:0.72rem; margin-top:2px; }
+        .signout-btn { background:transparent; border:1px solid rgba(139,0,0,0.4); color:rgba(245,233,200,0.5); padding:8px 16px; border-radius:6px; cursor:pointer; font-size:0.75rem; letter-spacing:1px; transition:all 0.2s; }
+        .signout-btn:hover { border-color:var(--crimson); color:#e8d5b0; background:rgba(139,0,0,0.15); }
+
+        .form-title { font-family:'Cinzel',serif; color:rgba(245,233,200,0.9); font-size:0.68rem; letter-spacing:4px; text-transform:uppercase; margin-bottom:22px; padding-bottom:14px; border-bottom:1px solid rgba(201,168,76,0.12); }
+        .form-group { margin-bottom:18px; }
+        .form-group label { display:block; font-family:'Cinzel',serif; font-size:0.63rem; letter-spacing:3px; color:rgba(201,168,76,0.65); text-transform:uppercase; margin-bottom:8px; }
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group select {
+            width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(201,168,76,0.2);
+            border-radius:8px; padding:13px 16px; color:#f5e9c8; font-family:'Lato',sans-serif;
+            font-size:0.95rem; outline:none; transition:border-color 0.2s,background 0.2s;
+        }
+        .form-group select option { background:#1a0a00; color:#f5e9c8; }
+        .form-group input:focus,
+        .form-group select:focus { border-color:var(--gold); background:rgba(201,168,76,0.07); }
+        .form-group input::placeholder { color:rgba(245,233,200,0.22); }
+
+        .drop-zone { border:2px dashed rgba(201,168,76,0.22); border-radius:10px; padding:30px 20px; text-align:center; cursor:pointer; transition:all 0.3s; position:relative; background:rgba(255,255,255,0.02); }
+        .drop-zone:hover,.drop-zone.drag-over { border-color:var(--gold); background:rgba(201,168,76,0.05); }
+        .drop-zone input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+        .drop-zone-icon { font-size:1.8rem; margin-bottom:8px; }
+        .drop-zone-text { color:rgba(245,233,200,0.45); font-size:0.86rem; line-height:1.6; }
+        .drop-zone-text strong { color:var(--gold-light); }
+        #image-preview { display:none; margin-top:12px; border-radius:8px; overflow:hidden; border:1px solid rgba(201,168,76,0.2); }
+        #image-preview img { width:100%; max-height:180px; object-fit:cover; display:block; }
+
+        .submit-btn { width:100%; background:linear-gradient(135deg,var(--crimson),var(--crimson-deep)); color:var(--gold-light); border:none; border-radius:8px; padding:15px; font-family:'Cinzel',serif; font-size:0.78rem; letter-spacing:3px; text-transform:uppercase; cursor:pointer; transition:all 0.2s; margin-top:6px; box-shadow:0 6px 24px rgba(139,0,0,0.35); }
+        .submit-btn:hover:not(:disabled){ transform:translateY(-2px); box-shadow:0 10px 34px rgba(139,0,0,0.45); }
+        .submit-btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+        #status { margin-top:16px; padding:13px 16px; border-radius:8px; font-size:0.88rem; display:none; font-weight:600; letter-spacing:0.5px; }
+        #status.success { background:rgba(26,122,58,0.18); border:1px solid rgba(26,122,58,0.35); color:#6fcf97; display:block; }
+        #status.error   { background:rgba(192,57,43,0.14); border:1px solid rgba(192,57,43,0.3); color:#e07070; display:block; }
+        #status.loading { background:rgba(201,168,76,0.09); border:1px solid rgba(201,168,76,0.22); color:var(--gold-light); display:block; }
+
+        .products-section { margin-top:32px; padding-top:26px; border-top:1px solid rgba(201,168,76,0.1); }
+        .products-section-title { font-family:'Cinzel',serif; color:rgba(245,233,200,0.85); font-size:0.65rem; letter-spacing:4px; margin-bottom:16px; }
+        .product-list { display:flex; flex-direction:column; gap:10px; }
+        .product-item { display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.03); border:1px solid rgba(201,168,76,0.1); border-radius:10px; padding:12px 14px; transition:border-color 0.2s; }
+        .product-item:hover { border-color:rgba(201,168,76,0.25); }
+        .product-thumb { width:50px; height:50px; border-radius:6px; object-fit:cover; border:1px solid rgba(201,168,76,0.15); flex-shrink:0; }
+        .product-details { flex:1; min-width:0; }
+        .product-name { font-family:'Cormorant Garamond',serif; color:#f5e9c8; font-size:0.98rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .product-price-tag { font-family:'Cinzel',serif; color:var(--gold); font-size:0.75rem; margin-top:2px; }
+        .product-category-tag { font-size:0.7rem; color:rgba(201,168,76,0.5); margin-top:2px; letter-spacing:1px; }
+        .delete-btn { background:transparent; border:1px solid rgba(192,57,43,0.28); color:rgba(224,112,112,0.55); width:32px; height:32px; border-radius:6px; cursor:pointer; font-size:0.88rem; transition:all 0.2s; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+        .delete-btn:hover { background:rgba(192,57,43,0.14); border-color:rgba(192,57,43,0.55); color:#e07070; }
+        .no-products { text-align:center; color:rgba(245,233,200,0.22); font-size:0.86rem; padding:18px; }
+
+        @media(max-width:500px){
+            .card { padding:30px 20px; }
+            .otp-box { width:42px; height:52px; font-size:1.3rem; }
+            .otp-boxes { gap:7px; }
+            .admin-header { flex-direction:column; gap:14px; align-items:flex-start; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══ SCREEN 1: SIGN IN ══ -->
+<div class="screen active" id="screen-login">
+    <div class="card">
+        <div class="logo-area">
+            <div class="ornament"><div class="ornament-line"></div><div class="ornament-diamond"></div><div class="ornament-line r"></div></div>
+            <h1>Shivashakti</h1><p>Admin Portal</p>
+        </div>
+        <p class="screen-label">Restricted Access</p>
+        <p class="screen-sub">Only authorised administrators may enter</p>
+        <div id="login-alert" class="alert error"></div>
+        <button class="google-btn" id="google-btn" onclick="startGoogleLogin()">
+            <svg class="google-icon" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            Sign in with Google
+        </button>
+        <div class="security-note">🔒 Google OAuth + OTP · Two-layer security</div>
+    </div>
+</div>
+
+<!-- ══ SCREEN 2: OTP ══ -->
+<div class="screen" id="screen-otp">
+    <div class="card">
+        <div class="logo-area">
+            <div class="ornament"><div class="ornament-line"></div><div class="ornament-diamond"></div><div class="ornament-line r"></div></div>
+            <h1>Shivashakti</h1><p>Admin Portal</p>
+        </div>
+        <div class="otp-user-info">
+            <img class="otp-avatar" id="otp-avatar" src="" alt="">
+            <div>
+                <div class="otp-user-name" id="otp-name"></div>
+                <div class="otp-user-email" id="otp-email-display"></div>
+            </div>
+        </div>
+        <p class="screen-label">OTP Verification</p>
+        <div class="otp-sent-msg">
+            📧 A 6-digit OTP has been sent to your Gmail.<br>
+            <small style="opacity:0.7">Check your inbox and spam folder.</small>
+        </div>
+        <div id="otp-alert" class="alert error"></div>
+        <div class="otp-boxes">
+            <input class="otp-box" id="otp0" maxlength="1" type="text" inputmode="numeric" autocomplete="off">
+            <input class="otp-box" id="otp1" maxlength="1" type="text" inputmode="numeric" autocomplete="off">
+            <input class="otp-box" id="otp2" maxlength="1" type="text" inputmode="numeric" autocomplete="off">
+            <input class="otp-box" id="otp3" maxlength="1" type="text" inputmode="numeric" autocomplete="off">
+            <input class="otp-box" id="otp4" maxlength="1" type="text" inputmode="numeric" autocomplete="off">
+            <input class="otp-box" id="otp5" maxlength="1" type="text" inputmode="numeric" autocomplete="off">
+        </div>
+        <div class="otp-timer" id="otp-timer">OTP expires in <span id="timer-count">05:00</span></div>
+        <button class="primary-btn" id="verify-btn" onclick="verifyOtp()">✦ Verify OTP</button>
+        <button class="ghost-btn" id="resend-btn" onclick="resendOtp()" disabled>↺ Resend OTP</button>
+        <button class="ghost-btn" onclick="cancelOtp()">← Back to Sign In</button>
+    </div>
+</div>
+
+<!-- ══ SCREEN 3: BLOCKED ══ -->
+<div class="screen" id="screen-blocked">
+    <div class="card">
+        <div class="logo-area">
+            <div class="ornament"><div class="ornament-line"></div><div class="ornament-diamond"></div><div class="ornament-line r"></div></div>
+            <h1>Shivashakti</h1><p>Admin Portal</p>
+        </div>
+        <div class="blocked-icon">🚫</div>
+        <p class="blocked-title">Access Denied</p>
+        <p class="blocked-msg">This Google account is not authorised.</p>
+        <div class="blocked-email" id="blocked-email-display"></div>
+        <p class="blocked-msg">Only 2 specific admin accounts are permitted.</p>
+        <button class="ghost-btn" onclick="cancelOtp()">← Try a Different Account</button>
+    </div>
+</div>
+
+<!-- ══ SCREEN 4: ADMIN PANEL ══ -->
+<div class="screen" id="screen-admin">
+    <div class="card">
+        <div class="admin-header">
+            <div class="admin-user">
+                <img class="admin-avatar" id="admin-avatar" src="" alt="">
+                <div>
+                    <div class="admin-user-name" id="admin-name"></div>
+                    <div class="admin-user-email" id="admin-email"></div>
+                </div>
+            </div>
+            <button class="signout-btn" onclick="signOut()">Sign Out</button>
+        </div>
+        <div class="form-title">Upload New Product</div>
+        <form id="uploadForm" onsubmit="handleUpload(event)">
+            <div class="form-group">
+                <label>Product Name</label>
+                <input type="text" id="p-name" placeholder="e.g., Zari Woven Silk Saree" required>
+            </div>
+            <div class="form-group">
+                <label>Price (₹)</label>
+                <input type="number" id="p-price" placeholder="e.g., 4699" required min="1">
+            </div>
+            <!-- ✅ CATEGORY DROPDOWN — INSIDE THE FORM -->
+            <div class="form-group">
+                <label>Category</label>
+                <select id="p-category" required>
+                    <option value="" disabled selected>Select category</option>
+                    <option value="pure-pattu">Pure Pattu</option>
+                    <option value="half-mix-pattu">Half Mix Pattu</option>
+                    <option value="imitation-pattu">Imitation Pattu</option>
+                    <option value="cotton">Cotton Sarees</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Saree Image</label>
+                <div class="drop-zone" id="dropZone">
+                    <input type="file" id="p-image" accept="image/*" required onchange="previewImage(this)">
+                    <div class="drop-zone-icon">🖼️</div>
+                    <div class="drop-zone-text"><strong>Click to choose</strong> or drag & drop<br>JPG, PNG, WEBP</div>
+                </div>
+                <div id="image-preview"><img id="preview-img" src="" alt="Preview"></div>
+            </div>
+            <button type="submit" class="submit-btn" id="submitBtn">✦ Upload Product</button>
+        </form>
+        <div id="status"></div>
+        <div class="products-section">
+            <div class="products-section-title">Existing Products</div>
+            <div class="product-list" id="product-list"><div class="no-products">Loading…</div></div>
+        </div>
+    </div>
+</div>
+
+<script>
+const GOOGLE_CLIENT_ID = "351119122057-32jkn9onlvq070041kmfv60avjei6g3h";
+const ALLOWED_EMAILS   = [
+    "shivashaktipattusarees@gmail.com",
+    "second-admin@gmail.com",
+];
+const AUTH_SERVER = "http://127.0.0.1:5001";
+
+let currentUser   = null;
+let timerInterval = null;
+let oauthPopup    = null;
+
+function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+}
+
+function showAlert(elId, msg, type = 'error') {
+    const el = document.getElementById(elId);
+    el.textContent = msg;
+    el.className = `alert ${type} show`;
+    if (type !== 'error') setTimeout(() => el.classList.remove('show'), 5000);
+}
+
+function startGoogleLogin() {
+    const btn = document.getElementById('google-btn');
+    btn.disabled = true;
+    btn.innerHTML = `<svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> Opening Google…`;
+
+    const params = new URLSearchParams({
+        client_id:     GOOGLE_CLIENT_ID,
+        redirect_uri:  AUTH_SERVER + '/auth/google/callback',
+        response_type: 'code',
+        scope:         'openid email profile',
+        access_type:   'online',
+        prompt:        'select_account',
+    });
+
+    const w = 520, h = 620;
+    const left = (screen.width - w) / 2;
+    const top  = (screen.height - h) / 2;
+    oauthPopup = window.open('https://accounts.google.com/o/oauth2/v2/auth?' + params.toString(), 'GoogleLogin', `width=${w},height=${h},top=${top},left=${left},scrollbars=yes`);
+    window.addEventListener('message', onOAuthMessage, { once: true });
+
+    const popupTimer = setInterval(() => {
+        if (oauthPopup && oauthPopup.closed) { clearInterval(popupTimer); resetGoogleBtn(); }
+    }, 800);
+}
+
+function onOAuthMessage(event) {
+    const allowedOrigins = [AUTH_SERVER, window.location.origin];
+    if (!allowedOrigins.includes(event.origin)) return;
+    const { email, name, picture, error } = event.data;
+    if (oauthPopup) oauthPopup.close();
+    resetGoogleBtn();
+    if (error) { showAlert('login-alert', '⚠️ Google Sign-In failed: ' + error); return; }
+    if (!ALLOWED_EMAILS.map(e => e.toLowerCase()).includes(email.toLowerCase())) {
+        document.getElementById('blocked-email-display').textContent = email;
+        showScreen('blocked'); return;
+    }
+    currentUser = { email, name, picture };
+    document.getElementById('otp-avatar').src = picture || '';
+    document.getElementById('otp-name').textContent = name;
+    document.getElementById('otp-email-display').textContent = email;
+    requestOtp(email).then(sent => { if (sent) { showScreen('otp'); startTimer(300); setTimeout(() => document.getElementById('otp0').focus(), 150); } });
+}
+
+function resetGoogleBtn() {
+    const btn = document.getElementById('google-btn');
+    btn.disabled = false;
+    btn.innerHTML = `<svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> Sign in with Google`;
+}
+
+async function requestOtp(email) {
+    try {
+        const res  = await fetch(AUTH_SERVER + '/auth/send-otp', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email}) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to send OTP');
+        return true;
+    } catch (err) { showAlert('login-alert', '⚠️ ' + err.message); return false; }
+}
+
+async function verifyOtp() {
+    const otp = Array.from({length:6}, (_,i) => document.getElementById('otp'+i).value).join('');
+    if (!/^\d{6}$/.test(otp)) { showAlert('otp-alert', 'Please enter all 6 digits.'); return; }
+    const btn = document.getElementById('verify-btn');
+    btn.disabled = true; btn.textContent = '⏳ Verifying…';
+    try {
+        const res  = await fetch(AUTH_SERVER + '/auth/verify-otp', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email:currentUser.email, otp}) });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            clearInterval(timerInterval);
+            document.getElementById('admin-avatar').src = currentUser.picture || '';
+            document.getElementById('admin-name').textContent = currentUser.name;
+            document.getElementById('admin-email').textContent = currentUser.email;
+            showScreen('admin'); loadProducts();
+        } else {
+            showAlert('otp-alert', data.error || '❌ Incorrect OTP.');
+            const boxes = document.querySelector('.otp-boxes');
+            for (const x of [-8,8,-6,6,0]) { await new Promise(r => setTimeout(r,65)); boxes.style.transform = `translateX(${x}px)`; }
+            clearOtpBoxes(); document.getElementById('otp0').focus();
+        }
+    } catch (err) { showAlert('otp-alert', '⚠️ ' + err.message); }
+    finally { btn.disabled = false; btn.textContent = '✦ Verify OTP'; }
+}
+
+function clearOtpBoxes() {
+    for (let i=0;i<6;i++){document.getElementById('otp'+i).value='';document.getElementById('otp'+i).classList.remove('filled');}
+}
+async function resendOtp() { document.getElementById('resend-btn').disabled=true; clearOtpBoxes(); const sent=await requestOtp(currentUser.email); if(sent) startTimer(300); }
+function cancelOtp() { currentUser=null; clearInterval(timerInterval); clearOtpBoxes(); showScreen('admin'); }
+function signOut()   { currentUser=null; clearInterval(timerInterval); showScreen('login'); }
+
+function startTimer(seconds) {
+    clearInterval(timerInterval);
+    const countEl=document.getElementById('timer-count'), timerDiv=document.getElementById('otp-timer'), resendBtn=document.getElementById('resend-btn');
+    resendBtn.disabled=true; timerDiv.className='otp-timer'; let remaining=seconds;
+    timerInterval=setInterval(()=>{
+        remaining--;
+        countEl.textContent=`${String(Math.floor(remaining/60)).padStart(2,'0')}:${String(remaining%60).padStart(2,'0')}`;
+        if(remaining<=0){clearInterval(timerInterval);timerDiv.className='otp-timer expired';timerDiv.textContent='⏰ OTP expired — click Resend.';resendBtn.disabled=false;}
+    },1000);
+}
+
+document.querySelectorAll('.otp-box').forEach((box,i) => {
+    box.addEventListener('input', e => {
+        const v=e.target.value.replace(/\D/g,''); e.target.value=v?v.slice(-1):''; e.target.classList.toggle('filled',!!v);
+        if(v&&i<5) document.getElementById('otp'+(i+1)).focus();
+        if(v&&i===5) document.getElementById('verify-btn').focus();
+    });
+    box.addEventListener('keydown', e => { if(e.key==='Backspace'&&!box.value&&i>0) document.getElementById('otp'+(i-1)).focus(); if(e.key==='Enter') verifyOtp(); });
+    box.addEventListener('paste', e => {
+        e.preventDefault(); const p=(e.clipboardData||window.clipboardData).getData('text').replace(/\D/g,'');
+        for(let j=0;j<6&&j<p.length;j++){const t=document.getElementById('otp'+j);t.value=p[j];t.classList.add('filled');}
+        document.getElementById('otp'+Math.min(p.length,5)).focus();
+    });
+});
+
+function previewImage(input) {
+    if(input.files&&input.files[0]){
+        const r=new FileReader();
+        r.onload=e=>{document.getElementById('preview-img').src=e.target.result;document.getElementById('image-preview').style.display='block';};
+        r.readAsDataURL(input.files[0]);
+        document.querySelector('.drop-zone-text').innerHTML=`<strong>${input.files[0].name}</strong>`;
+    }
+}
+
+// ✅ UPLOAD — sends name, price, category, image to Flask
+async function handleUpload(e) {
+    e.preventDefault();
+    const btn=document.getElementById('submitBtn'), status=document.getElementById('status');
+    btn.disabled=true; btn.textContent='⏳ Uploading…';
+    status.className='loading'; status.textContent='Uploading…';
+
+    const category = document.getElementById('p-category').value;
+    if (!category) { status.className='error'; status.textContent='❌ Please select a category.'; btn.disabled=false; btn.textContent='✦ Upload Product'; return; }
+
+    const fd=new FormData();
+    fd.append('name',     document.getElementById('p-name').value.trim());
+    fd.append('price',    document.getElementById('p-price').value.trim());
+    fd.append('category', category);
+    fd.append('image',    document.getElementById('p-image').files[0]);
+
+    try {
+        const res=await fetch('/api/upload',{method:'POST',body:fd});
+        const data=await res.json();
+        if(res.ok){
+            status.className='success'; status.textContent='✅ Product uploaded!';
+            document.getElementById('uploadForm').reset();
+            document.getElementById('image-preview').style.display='none';
+            document.querySelector('.drop-zone-text').innerHTML='<strong>Click to choose</strong> or drag & drop<br>JPG, PNG, WEBP';
+            loadProducts();
+        } else { status.className='error'; status.textContent='❌ '+(data.error||'Upload failed'); }
+    } catch(err) { status.className='error'; status.textContent='❌ '+err.message; }
+    finally { btn.disabled=false; btn.textContent='✦ Upload Product'; }
+}
+
+// ✅ LOAD PRODUCTS — shows category tag in admin list
+async function loadProducts() {
+    const list=document.getElementById('product-list');
+    list.innerHTML='<div class="no-products">Loading…</div>';
+    try {
+        const products=await fetch('/api/products').then(r=>r.json());
+        if(!products.length){list.innerHTML='<div class="no-products">No products yet.</div>';return;}
+        list.innerHTML=products.map((p,i)=>`
+            <div class="product-item" id="item-${i}">
+                <img class="product-thumb" src="${p.image_url}" onerror="this.src='https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=100&q=60'" alt="${p.name}">
+                <div class="product-details">
+                    <div class="product-name">${p.name}</div>
+                    <div class="product-price-tag">₹ ${Number(p.price).toLocaleString('en-IN')}</div>
+                    <div class="product-category-tag">${p.category || 'No category'}</div>
+                </div>
+                <button class="delete-btn" onclick="deleteProduct('${p.name}',${i})" title="Delete">🗑</button>
+            </div>`).join('');
+    } catch { list.innerHTML='<div class="no-products">⚠️ Could not load products</div>'; }
+}
+
+async function deleteProduct(name, index) {
+    if(!confirm(`Delete "${name}"?`)) return;
+    try {
+        const res=await fetch('/api/delete',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+        if(res.ok){document.getElementById('item-'+index)?.remove();if(!document.querySelector('.product-item'))document.getElementById('product-list').innerHTML='<div class="no-products">No products yet.</div>';}
+    } catch(err){alert('Delete failed: '+err.message);}
+}
+
+const dz=document.getElementById('dropZone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');});
+</script>
+</body>
+</html>
